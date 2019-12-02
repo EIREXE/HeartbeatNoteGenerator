@@ -67,7 +67,7 @@ def make_multi_note_style(tree, color) -> str:
    OUTLINE_COLOR = '#e7ba3f'
    root = make_normal_style(tree, color)
    outline_path = root.find('g', {None: "http://www.w3.org/2000/svg"})[-1]
-   outline_path.set('style', outline_path.get('style').replace('stroke:#000000', 'stroke:' + OUTLINE_COLOR))
+   outline_path.set('style', outline_path.get('style').replace('stroke:#000000', 'stroke:' + OUTLINE_COLOR).replace('stroke-width:2.0', 'stroke-width:4.0'))
    return root
 def make_multi_note_target_style(tree) -> str:
    BG_LINEAR_GRADIENT = """
@@ -96,7 +96,7 @@ def make_multi_note_target_style(tree) -> str:
        cy="50.000001"
        fx="49.999999"
        fy="50.000001"
-       r="20.248082"
+       r="40.248082"
        gradientTransform="matrix(1,0,0,1.5050907,0,-25.254534)"
        gradientUnits="userSpaceOnUse" />
    """
@@ -112,6 +112,7 @@ def make_multi_note_target_style(tree) -> str:
    bg_path.set('style', bg_path.get('style').replace('fill:#ffffff', 'fill:' + OUTLINE_COLOR).replace('stroke:#ffffff', 'fill:' + OUTLINE_COLOR))
    main_path.set('style', main_path.get('style').replace('stroke:#ffffff', 'stroke:' + OUTLINE_COLOR))
    main_path.set('style', main_path.get('style').replace('fill:#272646', "fill:url(#bgRadialGradient);"))
+   main_path.set('style', main_path.get('style').replace('stroke-width:2', "stroke-width:4"))
    
 
    return root
