@@ -63,10 +63,10 @@ def make_target_style(tree) -> str:
 
    return tree.getroot()
 
-def make_multi_note_style(tree, color, uses_custom_shadow) -> str:
+def make_multi_note_style(tree, color, uses_custom_shadow, shadow_color='compute') -> str:
    OUTLINE_COLOR = '#e7ba3f'
    print("USES" + str(uses_custom_shadow))
-   root = make_normal_style(tree, color, uses_custom_shadow)
+   root = make_normal_style(tree, color, uses_custom_shadow, shadow_color)
    outline_path = root.xpath("//*[@id = '%s']" % 'outline')[0]
    outline_path.set('style', outline_path.get('style').replace('stroke:#000000', 'stroke:' + OUTLINE_COLOR).replace('stroke-width:2.0', 'stroke-width:4.0'))
    return root
@@ -153,7 +153,10 @@ def make_hold_target_style(tree, color) -> str:
 
    return tree.getroot()
 
-def make_normal_style(tree, color, uses_custom_shadow) -> str:
+def hex2rgb(hex):
+   return tuple(int(hex[i:i+2], 16) for i in (0, 2, 4))
+
+def make_normal_style(tree, color, uses_custom_shadow, shadow_color="compute") -> str:
    CLIP_PATH = """
       <clipPath
          xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
@@ -188,15 +191,17 @@ def make_normal_style(tree, color, uses_custom_shadow) -> str:
    clip_path.append(clip_path_path)
 
    # calculate shadow color
-   rgb = tuple(int(COLOR[i:i+2], 16) for i in (0, 2, 4))
-   rgb2 = tuple(int(COLOR2[i:i+2], 16) for i in (0, 2, 4))
-   test = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+   rgb = hex2rgb(COLOR)
+   rgb2 = hex2rgb(COLOR2)
+   test = hex2rgb(color)
 
    hsv1 = colorsys.rgb_to_hls(rgb[0]/255.0, rgb[1]/255.0, rgb[2]/255.0)
    hsv2 = colorsys.rgb_to_hls(rgb2[0]/255.0, rgb2[1]/255.0, rgb2[2]/255.0)
-   hsvtest = colorsys.rgb_to_hls(test[0]/255.0, test[1]/255.0, test[2]/255.0)
-
-   shadow_color_hls = numpy.subtract(hsvtest, numpy.subtract(hsv1, hsv2))
+   hsvin = colorsys.rgb_to_hls(test[0]/255.0, test[1]/255.0, test[2]/255.0)
+   shadow_color_hls = numpy.add(hsvin, numpy.subtract(hsv1, hsv2))
+   if not shadow_color == "compute":
+      shadow_color_rgb = hex2rgb(shadow_color)
+      shadow_color_hls = colorsys.rgb_to_hls(shadow_color_rgb[0]/255.0, shadow_color_rgb[1]/255.0, shadow_color_rgb[2]/255.0)
    shadow_rgb = colorsys.hls_to_rgb(shadow_color_hls[0], shadow_color_hls[1], shadow_color_hls[2])
 
    out_rgb = '#%02x%02x%02x' % (int(shadow_rgb[0]*255), int(shadow_rgb[1]*255), int(shadow_rgb[2]*255))
@@ -265,6 +270,9 @@ if __name__ == "__main__":
             uses_custom_shadow = False
             if 'uses_custom_shadow' in graphic:
                uses_custom_shadow = graphic['uses_custom_shadow']
+            shadow_color = 'compute' # by default shadow colors are calculated automatically
+            if 'shadow_color' in graphic:
+               shadow_color = graphic['shadow_color']
             for subgraphic_name in graphic['src']:
                
                subgraphic = graphic['src'][subgraphic_name]
@@ -278,7 +286,7 @@ if __name__ == "__main__":
 
 
                   if subgraphic['style'] == 'normal':
-                     result = make_normal_style(tree, graphic['color'].replace('#', ''), uses_custom_shadow)
+                     result = make_normal_style(tree, graphic['color'].replace('#', ''), uses_custom_shadow, shadow_color.replace('#', ''))
                   if subgraphic['style'] == 'target':
                      strip_shadow(tree.getroot())
                      result = make_target_style(tree)
@@ -286,7 +294,7 @@ if __name__ == "__main__":
                      strip_shadow(tree.getroot())
                      result = make_hold_target_style(tree, graphic['color'].replace('#', ''))
                   if subgraphic['style'] == 'multi_note':
-                     result = make_multi_note_style(tree, graphic['color'].replace('#', ''), uses_custom_shadow)
+                     result = make_multi_note_style(tree, graphic['color'].replace('#', ''), uses_custom_shadow, shadow_color.replace('#', ''))
                   if subgraphic['style'] == 'multi_note_target':
                      strip_shadow(tree.getroot())
                      result = make_multi_note_target_style(tree)
