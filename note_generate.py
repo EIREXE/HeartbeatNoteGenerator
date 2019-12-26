@@ -63,10 +63,11 @@ def make_target_style(tree) -> str:
 
    return tree.getroot()
 
-def make_multi_note_style(tree, color) -> str:
+def make_multi_note_style(tree, color, uses_custom_shadow) -> str:
    OUTLINE_COLOR = '#e7ba3f'
-   root = make_normal_style(tree, color)
-   outline_path = root.find('g', {None: "http://www.w3.org/2000/svg"})[-1]
+   print("USES" + str(uses_custom_shadow))
+   root = make_normal_style(tree, color, uses_custom_shadow)
+   outline_path = root.xpath("//*[@id = '%s']" % 'outline')[0]
    outline_path.set('style', outline_path.get('style').replace('stroke:#000000', 'stroke:' + OUTLINE_COLOR).replace('stroke-width:2.0', 'stroke-width:4.0'))
    return root
 def make_multi_note_target_style(tree) -> str:
@@ -152,7 +153,7 @@ def make_hold_target_style(tree, color) -> str:
 
    return tree.getroot()
 
-def make_normal_style(tree, color) -> str:
+def make_normal_style(tree, color, uses_custom_shadow) -> str:
    CLIP_PATH = """
       <clipPath
          xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
@@ -175,7 +176,7 @@ def make_normal_style(tree, color) -> str:
 """
 
    main_layer = tree.getroot().find('g', {None: "http://www.w3.org/2000/svg"})
-   main_path = tree.getroot().find('g', {None: "http://www.w3.org/2000/svg"})[0]
+   main_path = tree.getroot().xpath("//*[@id = '%s']" % 'main_path')[0]
    defs = tree.getroot().find('defs', {None: "http://www.w3.org/2000/svg"})
 
    ## add shadow
@@ -201,10 +202,17 @@ def make_normal_style(tree, color) -> str:
    out_rgb = '#%02x%02x%02x' % (int(shadow_rgb[0]*255), int(shadow_rgb[1]*255), int(shadow_rgb[2]*255))
 
    shadow = etree.fromstring(SHADOW_PATH)
+
+   if uses_custom_shadow:
+      shadow = tree.getroot().xpath("//*[@id = '%s']" % 'shadow')[0]
+      print(shadow)
+      main_layer.append(shadow)
+   else:
+      print("NOT USING CUSTOM SHADOW")
+
    shadow.set('style', STYLE.replace('fill:none', 'fill:' + out_rgb))
    shadow.set('clip-path', 'url(#clipPathShadow)')
 
-   main_layer.append(shadow)
    defs.append(clip_path)
 
    ## add outline only clone of main shape
@@ -213,6 +221,7 @@ def make_normal_style(tree, color) -> str:
 
 
    top_outline.set('style', STYLE.replace('stroke:none', 'stroke:#000000'))
+   top_outline.set('id', 'outline')
    main_layer.append(top_outline)
 
    # set default color
@@ -229,14 +238,19 @@ def get_style_prop(style_str: str, prop):
       if item.startswith('prop'):
          return item.split(':')[1]
 
+def strip_shadow(root):
+   shadow = root.xpath("//*[@id = '%s']" % 'shadow')
+   if len(shadow) > 0:
+      shadow[0].getparent().remove(shadow[0])
+
 def export_png(svg_path, small=False):
    png_path = os.path.splitext(svg_path)[0] + ".png"
    small_png_path = os.path.splitext(svg_path)[0] + "_small.png"
    SIZE = 128
    SIZE_SMALL = 64
-   subprocess.run(['inkscape', '-z', '-f', svg_path, '-w', str(SIZE), '--export-area-page', '-e', png_path])
+   subprocess.run(['inkscape', '-z', '-f', svg_path, '-w', str(SIZE), '--export-area-page', '-e', png_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
    if small:
-      subprocess.run(['inkscape', '-z', '-f', svg_path, '-w', str(SIZE_SMALL), '--export-area-page', '-e', small_png_path])
+      subprocess.run(['inkscape', '-z', '-f', svg_path, '-w', str(SIZE_SMALL), '--export-area-page', '-e', small_png_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 if __name__ == "__main__":
    parser = argparse.ArgumentParser(description='Project Heartbeat note generator')
    parser.add_argument('--input', help="Definition file for parsing")
@@ -248,6 +262,9 @@ if __name__ == "__main__":
          src_path = os.path.join(args.input, 'src')
          for graphic_name in data['graphics']:
             graphic = data['graphics'][graphic_name]
+            uses_custom_shadow = False
+            if 'uses_custom_shadow' in graphic:
+               uses_custom_shadow = graphic['uses_custom_shadow']
             for subgraphic_name in graphic['src']:
                
                subgraphic = graphic['src'][subgraphic_name]
@@ -258,15 +275,20 @@ if __name__ == "__main__":
                   os.makedirs(os.path.dirname(out_path), exist_ok=True)
                   tree = etree.parse(graphic_path)
 
+
+
                   if subgraphic['style'] == 'normal':
-                     result = make_normal_style(tree, graphic['color'].replace('#', ''))
+                     result = make_normal_style(tree, graphic['color'].replace('#', ''), uses_custom_shadow)
                   if subgraphic['style'] == 'target':
+                     strip_shadow(tree.getroot())
                      result = make_target_style(tree)
                   if subgraphic['style'] == 'hold_target':
+                     strip_shadow(tree.getroot())
                      result = make_hold_target_style(tree, graphic['color'].replace('#', ''))
                   if subgraphic['style'] == 'multi_note':
-                     result = make_multi_note_style(tree, graphic['color'].replace('#', ''))
+                     result = make_multi_note_style(tree, graphic['color'].replace('#', ''), uses_custom_shadow)
                   if subgraphic['style'] == 'multi_note_target':
+                     strip_shadow(tree.getroot())
                      result = make_multi_note_target_style(tree)
                   out = open(out_path, 'w')
                   if result:
