@@ -35,13 +35,13 @@ def make_target_style(tree) -> str:
        inkscape:collect="always"
        style="color-interpolation-filters:sRGB"
        id="backFilter"
-       x="-0.15193133"
-       width="1.3038627"
-       y="-0.099159664"
-       height="1.1983193">
+       x="-0.26338398"
+       width="1.526768"
+       y="-0.3420333"
+       height="1.6840666">
       <feGaussianBlur
          inkscape:collect="always"
-         stdDeviation="2.433064"
+         stdDeviation="7.0858655"
          id="gaussianBlurBack" />
     </filter>
    """
@@ -59,6 +59,7 @@ def make_target_style(tree) -> str:
    BG_STYLE = "fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:2.0;stroke-opacity:1;filter:url(#backFilter);"
    bg_path = deepcopy(main_path)
    bg_path.set('style', BG_STYLE)
+   bg_path.set('id', 'background_path')
    main_layer.insert(0, bg_path) 
 
    return tree.getroot()
@@ -110,7 +111,8 @@ def make_multi_note_target_style(tree) -> str:
    
    defs.append(etree.fromstring(BG_LINEAR_GRADIENT))
    defs.append(etree.fromstring(BG_RADIAL_GRADIENT))
-   bg_path.set('style', bg_path.get('style').replace('fill:#ffffff', 'fill:' + OUTLINE_COLOR).replace('stroke:#ffffff', 'fill:' + OUTLINE_COLOR))
+   bg_path.set('style', bg_path.get('style').replace('fill:#ffffff', 'fill:' + OUTLINE_COLOR).replace('stroke:#ffffff', 'stroke:' + OUTLINE_COLOR))
+   bg_path.set('style', bg_path.get('style').replace('stroke-width:2', "stroke-width:4"))
    main_path.set('style', main_path.get('style').replace('stroke:#ffffff', 'stroke:' + OUTLINE_COLOR))
    main_path.set('style', main_path.get('style').replace('fill:#272646', "fill:url(#bgRadialGradient);"))
    main_path.set('style', main_path.get('style').replace('stroke-width:2', "stroke-width:4"))
@@ -248,6 +250,12 @@ def strip_shadow(root):
    if len(shadow) > 0:
       shadow[0].getparent().remove(shadow[0])
 
+def make_target_style_with_multi_outline(tree) -> str:
+   root = make_multi_note_target_style(tree)
+   main_path = root.xpath("//*[@id = '%s']" % 'main_path')[0]
+   main_path.set('style', main_path.get('style').replace('fill:url(#bgRadialGradient);', 'fill:#272646'))
+   return root
+
 def export_png(svg_path, small=False):
    png_path = os.path.splitext(svg_path)[0] + ".png"
    small_png_path = os.path.splitext(svg_path)[0] + "_small.png"
@@ -290,6 +298,9 @@ if __name__ == "__main__":
                   if subgraphic['style'] == 'target':
                      strip_shadow(tree.getroot())
                      result = make_target_style(tree)
+                  if subgraphic['style'] == 'target_with_multi_outline':
+                     strip_shadow(tree.getroot())
+                     result = make_target_style_with_multi_outline(tree)
                   if subgraphic['style'] == 'hold_target':
                      strip_shadow(tree.getroot())
                      result = make_hold_target_style(tree, graphic['color'].replace('#', ''))
@@ -299,7 +310,7 @@ if __name__ == "__main__":
                      strip_shadow(tree.getroot())
                      result = make_multi_note_target_style(tree)
                   out = open(out_path, 'w')
-                  if result:
+                  if result is not None:
                      out.write(etree.tostring(result, encoding='unicode'))
                      out.close()
                      if subgraphic['style'] == 'normal':
