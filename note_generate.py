@@ -8,6 +8,8 @@ import colorsys
 import os
 import subprocess
 
+MULTI_OUTLINE = "#E9BA00"
+
 def rgb_to_hsv(r, g, b):
     r, g, b = r/255.0, g/255.0, b/255.0
     mx = max(r, g, b)
@@ -65,7 +67,7 @@ def make_target_style(tree) -> str:
    return tree.getroot()
 
 def make_multi_note_style(tree, color, uses_custom_shadow, shadow_color='compute') -> str:
-   OUTLINE_COLOR = '#e7ba3f'
+   OUTLINE_COLOR = MULTI_OUTLINE
    print("USES" + str(uses_custom_shadow))
    root = make_normal_style(tree, color, uses_custom_shadow, shadow_color)
    outline_path = root.xpath("//*[@id = '%s']" % 'outline')[0]
@@ -102,7 +104,7 @@ def make_multi_note_target_style(tree) -> str:
        gradientTransform="matrix(1,0,0,1.5050907,0,-25.254534)"
        gradientUnits="userSpaceOnUse" />
    """
-   OUTLINE_COLOR = '#e7ba3f'
+   OUTLINE_COLOR = MULTI_OUTLINE
    root = make_target_style(tree)
    main_layer = root.find('g', {None: "http://www.w3.org/2000/svg"})
    bg_path = root.find('g', {None: "http://www.w3.org/2000/svg"})[0]
@@ -256,14 +258,17 @@ def make_target_style_with_multi_outline(tree) -> str:
    main_path.set('style', main_path.get('style').replace('fill:url(#bgRadialGradient);', 'fill:#272646'))
    return root
 
-def export_png(svg_path, small=False):
+def export_png(svg_path, small=False, scale=1.0):
    png_path = os.path.splitext(svg_path)[0] + ".png"
    small_png_path = os.path.splitext(svg_path)[0] + "_small.png"
    SIZE = 128
    SIZE_SMALL = 64
-   subprocess.run(['inkscape', '-z', '-f', svg_path, '-w', str(SIZE), '--export-area-page', '-e', png_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+   path = png_path
+   size = SIZE
    if small:
-      subprocess.run(['inkscape', '-z', '-f', svg_path, '-w', str(SIZE_SMALL), '--export-area-page', '-e', small_png_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+      path = small_png_path
+      size = SIZE_SMALL
+   subprocess.run(['inkscape', '-z', '-f', svg_path, '-w', str(size * scale), '--export-area-page', '-e', png_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 if __name__ == "__main__":
    parser = argparse.ArgumentParser(description='Project Heartbeat note generator')
    parser.add_argument('--input', help="Definition file for parsing")
@@ -309,14 +314,14 @@ if __name__ == "__main__":
                   if subgraphic['style'] == 'multi_note_target':
                      strip_shadow(tree.getroot())
                      result = make_multi_note_target_style(tree)
+                  scale = 1.0
+                  if 'scale' in subgraphic:
+                     scale = subgraphic['scale']
                   out = open(out_path, 'w')
                   if result is not None:
                      out.write(etree.tostring(result, encoding='unicode'))
                      out.close()
-                     if subgraphic['style'] == 'normal':
-                        export_png(out_path, small=True)
-                     else:
-                        export_png(out_path, small=False)
+                     export_png(out_path, small=False, scale=scale)                        
 
    else:
       print("Cannot find icon pack at path {}".format(config_path))
