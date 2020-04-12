@@ -10,6 +10,47 @@ import subprocess
 
 MULTI_OUTLINE = "#E9BA00"
 
+BASE_SVG = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   viewBox="0 0 100 100"
+   height="100"
+   width="100"
+   version="1.1"
+   id="svg45"
+   inkscape:version="0.92.4 5da689c313, 2019-01-14">
+   <defs></defs>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="2560"
+     inkscape:window-height="1080"
+     id="namedview47"
+     showgrid="false"
+     inkscape:zoom="3.9506912"
+     inkscape:cx="72.194105"
+     inkscape:cy="20.670582"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg45" />
+</svg>
+"""
+
+NORMAL_OUTLINE_WIDTH = 3.0
+
 def rgb_to_hsv(r, g, b):
     r, g, b = r/255.0, g/255.0, b/255.0
     mx = max(r, g, b)
@@ -49,20 +90,18 @@ def make_target_style(tree) -> str:
    """
 
    FG_STYLE = "fill:#272646;fill-opacity:1;stroke:#ffffff;stroke-width:2;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
-   
-   main_layer = tree.getroot().find('g', {None: "http://www.w3.org/2000/svg"})
-   main_path = tree.getroot().find('g', {None: "http://www.w3.org/2000/svg"})[0]
+   main_path = tree.getroot().xpath("//*[@id = '%s']" % 'main_path')[0]
    defs = tree.getroot().find('defs', {None: "http://www.w3.org/2000/svg"})
 
    main_path.set('style', FG_STYLE)
 
    defs.append(etree.fromstring(FILTER))
 
-   BG_STYLE = "fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:2.0;stroke-opacity:1;filter:url(#backFilter);"
+   BG_STYLE = "fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:" + str(NORMAL_OUTLINE_WIDTH) + ";stroke-opacity:1;filter:url(#backFilter);"
    bg_path = deepcopy(main_path)
    bg_path.set('style', BG_STYLE)
    bg_path.set('id', 'background_path')
-   main_layer.insert(0, bg_path) 
+   tree.getroot().insert(0, bg_path) 
 
    return tree.getroot()
 
@@ -71,7 +110,7 @@ def make_multi_note_style(tree, color, uses_custom_shadow, shadow_color='compute
    print("USES" + str(uses_custom_shadow))
    root = make_normal_style(tree, color, uses_custom_shadow, shadow_color)
    outline_path = root.xpath("//*[@id = '%s']" % 'outline')[0]
-   outline_path.set('style', outline_path.get('style').replace('stroke:#000000', 'stroke:' + OUTLINE_COLOR).replace('stroke-width:2.0', 'stroke-width:4.0'))
+   outline_path.set('style', outline_path.get('style').replace('stroke:#000000', 'stroke:' + OUTLINE_COLOR).replace('stroke-width:' + str(NORMAL_OUTLINE_WIDTH), 'stroke-width:4.0'))
    return root
 def make_multi_note_target_style(tree) -> str:
    BG_LINEAR_GRADIENT = """
@@ -106,9 +145,8 @@ def make_multi_note_target_style(tree) -> str:
    """
    OUTLINE_COLOR = MULTI_OUTLINE
    root = make_target_style(tree)
-   main_layer = root.find('g', {None: "http://www.w3.org/2000/svg"})
-   bg_path = root.find('g', {None: "http://www.w3.org/2000/svg"})[0]
-   main_path = root.find('g', {None: "http://www.w3.org/2000/svg"})[1]
+   bg_path = tree.getroot().xpath("//*[@id = '%s']" % 'background_path')[0]
+   main_path = tree.getroot().xpath("//*[@id = '%s']" % 'main_path')[0]
    defs = root.find('defs', {None: "http://www.w3.org/2000/svg"})
    
    defs.append(etree.fromstring(BG_LINEAR_GRADIENT))
@@ -142,23 +180,25 @@ def make_hold_target_style(tree, color) -> str:
    
    FG_STYLE = "fill:#272646;fill-opacity:1;stroke:" + "#" + color + ";stroke-width:3;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
    
-   main_layer = tree.getroot().find('g', {None: "http://www.w3.org/2000/svg"})
-   main_path = tree.getroot().find('g', {None: "http://www.w3.org/2000/svg"})[0]
+   main_path = tree.getroot().xpath("//*[@id = '%s']" % 'main_path')[0]
    defs = tree.getroot().find('defs', {None: "http://www.w3.org/2000/svg"})
 
    main_path.set('style', FG_STYLE)
 
    defs.append(etree.fromstring(FILTER))
 
-   BG_STYLE = "fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:2.0;stroke-opacity:1;filter:url(#backFilter);"
+   BG_STYLE = "fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:" + str(NORMAL_OUTLINE_WIDTH) + ";stroke-opacity:1;filter:url(#backFilter);"
    bg_path = deepcopy(main_path)
    bg_path.set('style', BG_STYLE)
-   main_layer.insert(0, bg_path) 
+   tree.getroot().insert(0, bg_path) 
 
    return tree.getroot()
 
 def hex2rgb(hex):
    return tuple(int(hex[i:i+2], 16) for i in (0, 2, 4))
+
+def remove_shadow(tree):
+   tree.getroot().find()
 
 def make_normal_style(tree, color, uses_custom_shadow, shadow_color="compute") -> str:
    CLIP_PATH = """
@@ -171,7 +211,7 @@ def make_normal_style(tree, color, uses_custom_shadow, shadow_color="compute") -
 
    COLOR = "87d639"
    COLOR2="ace376"
-   STYLE = "fill:none;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.0;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+   STYLE = "fill:none;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:" + str(NORMAL_OUTLINE_WIDTH) + ";stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
 
    SHADOW_PATH = """
     <circle
@@ -181,57 +221,37 @@ def make_normal_style(tree, color, uses_custom_shadow, shadow_color="compute") -
        cy="-44.285713"
        cx="-61.785709" />
 """
-
-   main_layer = tree.getroot().find('g', {None: "http://www.w3.org/2000/svg"})
    main_path = tree.getroot().xpath("//*[@id = '%s']" % 'main_path')[0]
    defs = tree.getroot().find('defs', {None: "http://www.w3.org/2000/svg"})
 
-   ## add shadow
-
-   # create path and clip path (from the note shape we have)
-
-   clip_path_path = deepcopy(main_path)
-   clip_path = etree.fromstring(CLIP_PATH)
-   clip_path.append(clip_path_path)
-
-   # calculate shadow color
-   rgb = hex2rgb(COLOR)
-   rgb2 = hex2rgb(COLOR2)
-   test = hex2rgb(color)
-
-   hsv1 = colorsys.rgb_to_hls(rgb[0]/255.0, rgb[1]/255.0, rgb[2]/255.0)
-   hsv2 = colorsys.rgb_to_hls(rgb2[0]/255.0, rgb2[1]/255.0, rgb2[2]/255.0)
-   hsvin = colorsys.rgb_to_hls(test[0]/255.0, test[1]/255.0, test[2]/255.0)
-   shadow_color_hls = numpy.add(hsvin, numpy.subtract(hsv1, hsv2))
-   if not shadow_color == "compute":
+   if uses_custom_shadow:
+      clip_path_path = deepcopy(main_path)
+      clip_path = etree.fromstring(CLIP_PATH)
+      clip_path.append(clip_path_path)
       shadow_color_rgb = hex2rgb(shadow_color)
       shadow_color_hls = colorsys.rgb_to_hls(shadow_color_rgb[0]/255.0, shadow_color_rgb[1]/255.0, shadow_color_rgb[2]/255.0)
-   shadow_rgb = colorsys.hls_to_rgb(shadow_color_hls[0], shadow_color_hls[1], shadow_color_hls[2])
-
-   out_rgb = '#%02x%02x%02x' % (int(shadow_rgb[0]*255), int(shadow_rgb[1]*255), int(shadow_rgb[2]*255))
-
-   shadow = etree.fromstring(SHADOW_PATH)
-
-   if uses_custom_shadow:
-      shadow = tree.getroot().xpath("//*[@id = '%s']" % 'shadow')[0]
-      print(shadow)
-      main_layer.append(shadow)
+      shadow_rgb = colorsys.hls_to_rgb(shadow_color_hls[0], shadow_color_hls[1], shadow_color_hls[2])
+      out_rgb = '#%02x%02x%02x' % (int(shadow_rgb[0]*255), int(shadow_rgb[1]*255), int(shadow_rgb[2]*255))
+      shadow = tree.getroot().xpath("//*[@id = '%s']" % 'shadow')
+      if len(shadow) > 0:
+         shadow = shadow[0]
+         print(shadow)
+         tree.getroot().append(shadow)
+         shadow.set('style', STYLE.replace('fill:none', 'fill:' + out_rgb))
+         shadow.set('clip-path', 'url(#clipPathShadow)')
+         defs.append(clip_path)
    else:
       print("NOT USING CUSTOM SHADOW")
 
-   shadow.set('style', STYLE.replace('fill:none', 'fill:' + out_rgb))
-   shadow.set('clip-path', 'url(#clipPathShadow)')
 
-   defs.append(clip_path)
 
    ## add outline only clone of main shape
 
    top_outline = deepcopy(main_path)
 
-
    top_outline.set('style', STYLE.replace('stroke:none', 'stroke:#000000'))
    top_outline.set('id', 'outline')
-   main_layer.append(top_outline)
+   tree.getroot().append(top_outline)
 
    # set default color
 
@@ -247,11 +267,17 @@ def get_style_prop(style_str: str, prop):
       if item.startswith('prop'):
          return item.split(':')[1]
 
-def strip_shadow(root):
-   shadow = root.xpath("//*[@id = '%s']" % 'shadow')
-   if len(shadow) > 0:
-      shadow[0].getparent().remove(shadow[0])
+def strip_shadow(tree):
+   parser = etree.XMLParser(ns_clean=True, recover=True, encoding='utf-8')
+   base_tree = etree.fromstring(BASE_SVG.encode('utf-8'), parser=parser)
+   main_path = tree.getroot().xpath("//*[@id = '%s']" % 'main_path')
+   print(etree.tostring(tree.getroot()))
+   if len(main_path) > 0:
 
+      base_tree.append(main_path[0])
+   else:
+      print("COULDN'T FIND MAIN PATH!!")
+   return etree.ElementTree(base_tree)
 def make_target_style_with_multi_outline(tree) -> str:
    root = make_multi_note_target_style(tree)
    main_path = root.xpath("//*[@id = '%s']" % 'main_path')[0]
@@ -301,19 +327,15 @@ if __name__ == "__main__":
                   if subgraphic['style'] == 'normal':
                      result = make_normal_style(tree, graphic['color'].replace('#', ''), uses_custom_shadow, shadow_color.replace('#', ''))
                   if subgraphic['style'] == 'target':
-                     strip_shadow(tree.getroot())
-                     result = make_target_style(tree)
+                     result = make_target_style(strip_shadow(tree))
                   if subgraphic['style'] == 'target_with_multi_outline':
-                     strip_shadow(tree.getroot())
-                     result = make_target_style_with_multi_outline(tree)
+                     result = make_target_style_with_multi_outline(strip_shadow(tree))
                   if subgraphic['style'] == 'hold_target':
-                     strip_shadow(tree.getroot())
-                     result = make_hold_target_style(tree, graphic['color'].replace('#', ''))
+                     result = make_hold_target_style(strip_shadow(tree), graphic['color'].replace('#', ''))
                   if subgraphic['style'] == 'multi_note':
                      result = make_multi_note_style(tree, graphic['color'].replace('#', ''), uses_custom_shadow, shadow_color.replace('#', ''))
                   if subgraphic['style'] == 'multi_note_target':
-                     strip_shadow(tree.getroot())
-                     result = make_multi_note_target_style(tree)
+                     result = make_multi_note_target_style(strip_shadow(tree))
                   scale = 1.0
                   if 'scale' in subgraphic:
                      scale = subgraphic['scale']
