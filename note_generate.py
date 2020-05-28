@@ -71,7 +71,7 @@ def rgb_to_hsv(r, g, b):
     v = mx*100
     return h, s, v
 
-def make_target_style(tree) -> str:
+def make_target_style(tree, color="#272646") -> str:
    FILTER = """
        <filter
        xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
@@ -89,7 +89,7 @@ def make_target_style(tree) -> str:
     </filter>
    """
 
-   FG_STYLE = "fill:#272646;fill-opacity:1;stroke:#ffffff;stroke-width:2;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+   FG_STYLE = "fill:" + color + ";fill-opacity:1;stroke:#ffffff;stroke-width:2;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
    main_path = tree.getroot().xpath("//*[@id = '%s']" % 'main_path')[0]
    defs = tree.getroot().find('defs', {None: "http://www.w3.org/2000/svg"})
 
@@ -154,7 +154,7 @@ def make_multi_note_target_style(tree) -> str:
    bg_path.set('style', bg_path.get('style').replace('fill:#ffffff', 'fill:' + OUTLINE_COLOR).replace('stroke:#ffffff', 'stroke:' + OUTLINE_COLOR))
    bg_path.set('style', bg_path.get('style').replace('stroke-width:2', "stroke-width:4"))
    main_path.set('style', main_path.get('style').replace('stroke:#ffffff', 'stroke:' + OUTLINE_COLOR))
-   main_path.set('style', main_path.get('style').replace('fill:#272646', "fill:url(#bgRadialGradient);"))
+   main_path.set('style', main_path.get('style').replace('fill:' + color, "fill:url(#bgRadialGradient);"))
    main_path.set('style', main_path.get('style').replace('stroke-width:2', "stroke-width:4"))
    
 
@@ -236,7 +236,7 @@ def make_normal_style(tree, color, uses_custom_shadow, shadow_color="compute") -
       if len(shadow) > 0:
          shadow = shadow[0]
          print(shadow)
-         tree.getroot().append(shadow)
+         main_path.getparent().insert(main_path.getparent().index(main_path)+1, shadow)
          shadow.set('style', STYLE.replace('fill:none', 'fill:' + out_rgb))
          shadow.set('clip-path', 'url(#clipPathShadow)')
          defs.append(clip_path)
@@ -271,7 +271,6 @@ def strip_shadow(tree):
    parser = etree.XMLParser(ns_clean=True, recover=True, encoding='utf-8')
    base_tree = etree.fromstring(BASE_SVG.encode('utf-8'), parser=parser)
    main_path = tree.getroot().xpath("//*[@id = '%s']" % 'main_path')
-   print(etree.tostring(tree.getroot()))
    if len(main_path) > 0:
 
       base_tree.append(main_path[0])
@@ -294,7 +293,9 @@ def export_png(svg_path, small=False, scale=1.0):
    if small:
       path = small_png_path
       size = SIZE_SMALL
-   subprocess.run(['inkscape', '-z', '-f', svg_path, '-w', str(size * scale), '--export-area-page', '-e', png_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+   print("RUNNING INKSCAPE FOR", svg_path)
+   print(['inkscape', svg_path, '-w', str(size * scale), '--export-area-page', '-o', png_path])
+   subprocess.run(['inkscape', svg_path, '-w', str(int(size * scale)), '--export-area-page', '-o', png_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 if __name__ == "__main__":
    parser = argparse.ArgumentParser(description='Project Heartbeat note generator')
    parser.add_argument('--input', help="Definition file for parsing")
@@ -326,6 +327,8 @@ if __name__ == "__main__":
 
                   if subgraphic['style'] == 'normal':
                      result = make_normal_style(tree, graphic['color'].replace('#', ''), uses_custom_shadow, shadow_color.replace('#', ''))
+                  if subgraphic['style'] == 'target_with_fill_color':
+                     result = make_target_style(strip_shadow(tree), color=graphic['color'])
                   if subgraphic['style'] == 'target':
                      result = make_target_style(strip_shadow(tree))
                   if subgraphic['style'] == 'target_with_multi_outline':
